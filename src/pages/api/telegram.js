@@ -20,9 +20,12 @@ export default async function handler(req, res) {
           const paralelo = datos.find(item => item.nombre === 'Paralelo');
           
           if (paralelo) {
-            const mensaje = `💵 Dólar Paralelo:\n` +
+            const mensaje = 
+                            ``
+                            `💵 Dólar Paralelo:\n` +
                             `📈 Precio: Bs. ${paralelo.promedio.toFixed(2)}\n` +
                             `🕒 Actualizado: ${new Date(paralelo.fechaActualizacion).toLocaleDateString()}`;
+                            ``
             
             await bot.sendMessage(chatId, mensaje);
           } else {
@@ -33,9 +36,12 @@ export default async function handler(req, res) {
             const datos = await response.json();
             const oficial = datos.find(item => item.nombre === 'Oficial');
             if (oficial) {
-                const mensaje = `💵 Dólar Oficial:\n` +
+                const mensaje = 
+                                ``
+                                `💵 Dólar Oficial:\n` +
                                 `📈 Precio: Bs. ${oficial.promedio.toFixed(2)}\n` +
-                                `🕒 Actualizado: ${new Date(datos._timestamp).toLocaleDateString()}`;
+                                `🕒 Actualizado: ${new Date(oficial.fechaActualizacion).toLocaleDateString()}`;
+                                ``
                 
                 await bot.sendMessage(chatId, mensaje);
             } else {
