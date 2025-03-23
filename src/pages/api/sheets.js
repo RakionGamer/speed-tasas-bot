@@ -1,15 +1,12 @@
 import { google } from 'googleapis';
 require('dotenv').config();
 
-
-
-
 export default async function handler(req, res) {
   try {
     const auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      'http://localhost:3000/api/auth/callback/google'
+      'https://speed-bot-tasas.vercel.app/api/auth/callback/google'
     );
 
     auth.setCredentials({
