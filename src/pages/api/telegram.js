@@ -15,11 +15,8 @@ export default async function handler(req, res) {
 
       try {
         if (text === 'tasa-paralelo') {
-          // Obtener datos de la API
           const response = await fetch('https://ve.dolarapi.com/v1/dolares');
           const datos = await response.json();
-          
-          // Buscar la tasa paralela
           const paralelo = datos.find(item => item.nombre === 'Paralelo');
           
           if (paralelo) {
@@ -31,9 +28,21 @@ export default async function handler(req, res) {
           } else {
             await bot.sendMessage(chatId, '⚠️ No se encontró la tasa paralelo');
           }
+        } else if (text === 'tasa-oficial') {
+            const response = await fetch('https://s3.amazonaws.com/dolartoday/data.json');
+            const datos = await response.json();
+            const oficial = datos.USD.promedio_real;
+            if (oficial) {
+                const mensaje = `💵 Dólar Oficial:\n` +
+                                `📈 Precio: Bs. ${oficial.toFixed(2)}\n` +
+                                `🕒 Actualizado: ${new Date(datos._timestamp).toLocaleDateString()}`;
+                
+                await bot.sendMessage(chatId, mensaje);
+            } else {
+                await bot.sendMessage(chatId, '⚠️ No se encontró la tasa oficial');
+            }
         } else {
-          // Respuesta por defecto
-          await bot.sendMessage(chatId, `Recibí: ${text}`);
+          await bot.sendMessage(chatId, `Para ingresar un comando válido, escribe "tasa-paralelo u tasa-oficial"`);
         }
       } catch (error) {
         console.error(error);
