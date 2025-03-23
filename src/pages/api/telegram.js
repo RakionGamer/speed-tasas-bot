@@ -21,10 +21,10 @@ export default async function handler(req, res) {
           
           if (paralelo) {
             const mensaje = 
-                            ``
+                            `\n` +
                             `💵 Dólar Paralelo:\n` +
                             `📈 Precio: Bs. ${paralelo.promedio.toFixed(2)}\n` +
-                            `🕒 Actualizado: ${new Date(paralelo.fechaActualizacion).toLocaleDateString()}`;
+                            `🕒 Actualizado: ${new Date(paralelo.fechaActualizacion).toLocaleDateString()}\n` +
                             ``
             
             await bot.sendMessage(chatId, mensaje);
@@ -37,10 +37,10 @@ export default async function handler(req, res) {
             const oficial = datos.find(item => item.nombre === 'Oficial');
             if (oficial) {
                 const mensaje = 
-                                ``
+                                `\n` +
                                 `💵 Dólar Oficial:\n` +
                                 `📈 Precio: Bs. ${oficial.promedio.toFixed(2)}\n` +
-                                `🕒 Actualizado: ${new Date(oficial.fechaActualizacion).toLocaleDateString()}`;
+                                `🕒 Actualizado: ${new Date(oficial.fechaActualizacion).toLocaleDateString()}\n` +
                                 ``
                 
                 await bot.sendMessage(chatId, mensaje);
