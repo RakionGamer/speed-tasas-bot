@@ -29,12 +29,12 @@ export default async function handler(req, res) {
             await bot.sendMessage(chatId, '⚠️ No se encontró la tasa paralelo');
           }
         } else if (text === 'tasa-oficial') {
-            const response = await fetch('https://s3.amazonaws.com/dolartoday/data.json');
+            const response = await fetch('https://ve.dolarapi.com/v1/dolares');
             const datos = await response.json();
-            const oficial = datos.USD.promedio_real;
+            const oficial = datos.find(item => item.nombre === 'Oficial');
             if (oficial) {
                 const mensaje = `💵 Dólar Oficial:\n` +
-                                `📈 Precio: Bs. ${oficial.toFixed(2)}\n` +
+                                `📈 Precio: Bs. ${oficial.promedio.toFixed(2)}\n` +
                                 `🕒 Actualizado: ${new Date(datos._timestamp).toLocaleDateString()}`;
                 
                 await bot.sendMessage(chatId, mensaje);
