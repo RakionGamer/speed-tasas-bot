@@ -42,6 +42,26 @@ function normalizeUserInput(text) {
     .toLowerCase();
 }
 
+
+const welcomeMessage = `
+🎉 *Bienvenido al Bot de Tasas de Cambio* 💱
+
+_Puedes usar estos comandos:_
+
+💵 *Tasas locales:*
+  - \`/paralelo [monto]\`  → Dólar paralelo
+  - \`/oficial [monto]\`   → Dólar oficial
+
+🌎 *Conversiones internacionales:*
+  - \`origen-destino monto\`  
+    Ejemplo: \`chile-venezuela 2500\`
+
+📊 *Ejemplos:*
+  - \`/paralelo 1000\`
+  - \`/oficial 500\`
+  - \`mexico-argentina 3000\`
+`;
+
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { body } = req;
@@ -51,10 +71,49 @@ export default async function handler(req, res) {
       const text = body.message.text.toLowerCase();
 
       try {
-        if (text === 'paralelo') {
-          // Código existente para paralelo...
-        } else if (text === 'oficial') {
-          // Código existente para oficial...
+
+        if (text === '/start' || text === 'hola') {
+          await bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
+          return res.status(200).end();
+        }
+
+
+        else if (text.startsWith('/paralelo') || text.startsWith('paralelo')) {
+          const amount = parseFloat(text.split(' ')[1]?.replace(',', '.'));
+          const response = await fetch('https://ve.dolarapi.com/v1/dolares');
+          const datos = await response.json();
+          const paralelo = datos.find(item => item.nombre === 'Paralelo');
+
+          if (paralelo) {
+            let mensaje = `💵 *Dólar Paralelo*\n📈 Precio: Bs. ${paralelo.promedio.toFixed(2)}`;
+            
+            if (!isNaN(amount)) {
+              const resultado = amount * paralelo.promedio;
+              mensaje += `\n💸 *${amount} USD* → *${resultado.toFixed(2)} Bs.*`;
+            }
+            
+            await bot.sendMessage(chatId, mensaje, { parse_mode: 'Markdown' });
+          } else {
+            await bot.sendMessage(chatId, '⚠️ No se encontró la tasa paralelo');
+          }
+          return res.status(200).end();
+        } else if (text.startsWith('/oficial') || text.startsWith('oficial')) {
+          const amount = parseFloat(text.split(' ')[1]?.replace(',', '.'));
+          const response = await fetch('https://ve.dolarapi.com/v1/dolares');
+          const datos = await response.json();
+          const oficial = datos.find(item => item.nombre === 'Oficial');
+          if (oficial) {
+            let mensaje = `💵 *Dólar Oficial*\n📈 Precio: Bs. ${oficial.promedio.toFixed(2)}`;
+            
+            if (!isNaN(amount)) {
+              const resultado = amount * oficial.promedio;
+              mensaje += `\n💸 *${amount} USD* → *${resultado.toFixed(2)} Bs.*`;
+            }
+            await bot.sendMessage(chatId, mensaje, { parse_mode: 'Markdown' });
+          } else {
+            await bot.sendMessage(chatId, '⚠️ No se encontró la tasa oficial');
+          }
+          return res.status(200).end();
         } else {
           const args = text.split(' ');
           if (args.length >= 2) {
