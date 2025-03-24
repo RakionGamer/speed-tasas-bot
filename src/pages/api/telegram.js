@@ -1,155 +1,113 @@
-// pages/api/telegram.js
 import TelegramBot from 'node-telegram-bot-api';
-import { google } from 'googleapis';
+import fetch from 'node-fetch';
+require('dotenv').config();
+const token = process.env.TELEGRAM_BOT_TOKEN;
+const bot = new TelegramBot(token);
 
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { 
-  polling: process.env.NODE_ENV !== 'production' 
-});
+function processDataIntoRates(data) {
+  const rates = {};
+  let currentOrigin = null;
 
-// Configuración de Google Sheets
-const auth = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.NODE_ENV === 'production' 
-    ? 'https://speed-bot-tasas.vercel.app/api/auth/callback/google'
-    : 'http://localhost:3000/api/auth/callback/google'
-);
+  const normalizeText = (text) => {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[ .]/g, '')
+      .toLowerCase();
+  };
 
-auth.setCredentials({
-  refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-});
-
-// Cache de tasas
-let tasasCache = {};
-let lastUpdate = 0;
-
-const CURRENCY_FORMATS = {
-  VENEZUELA: { code: 'VES', symbol: 'Bs.' },
-  ARGENTINA: { code: 'ARS', symbol: '$' },
-  CHILE: { code: 'CLP', symbol: '$' },
-  COLOMBIA: { code: 'COP', symbol: '$' },
-  PERU: { code: 'PEN', symbol: 'S/' },
-  ECUADOR: { code: 'USD', symbol: '$' },
-  MEXICO: { code: 'MXN', symbol: '$' },
-  PANAMA: { code: 'PAB', symbol: 'B/.' },
-  BRASIL: { code: 'BRL', symbol: 'R$' },
-  ESPAÑA: { code: 'EUR', symbol: '€' },
-  'REP. DOMINICANA': { code: 'DOP', symbol: '$' }
-};
-
-async function actualizarTasas() {
-  if (Date.now() - lastUpdate < 300000 && Object.keys(tasasCache).length > 0) return;
-  
-  try {
-    const sheets = google.sheets({ version: 'v4', auth });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.SPREADSHEET_ID,
-      range: process.env.SPREADSHEET_RANGE,
-    });
-
-    const rawData = response.data.values || [];
-    tasasCache = procesarDatos(rawData);
-    lastUpdate = Date.now();
-  } catch (error) {
-    console.error('Error actualizando tasas:', error);
+  for (const item of data) {
+    if (typeof item === 'string' && item.startsWith('DESDE ')) {
+      const origin = item.replace('DESDE ', '').trim();
+      currentOrigin = normalizeText(origin);
+      rates[currentOrigin] = {};
+    } else if (Array.isArray(item) && currentOrigin) {
+      const [destino, tasa] = item.map(i => typeof i === 'string' ? i.trim() : i);
+      const destinoNormalized = normalizeText(destino);
+      const tasaNum = parseFloat(tasa.replace(',', '.'));
+      if (!isNaN(tasaNum)) {
+        rates[currentOrigin][destinoNormalized] = tasaNum;
+      }
+    }
   }
+
+  return rates;
 }
 
-function procesarDatos(data) {
-  const processed = {};
-  let currentCountry = '';
-  
-  data.forEach(row => {
-    if (row[0]?.startsWith('DESDE')) {
-      currentCountry = row[0].replace('DESDE', '').trim().toUpperCase();
-      processed[currentCountry] = {};
-    } else if (currentCountry && row[0]) {
-      const country = row[0].trim().toUpperCase();
-      const value = parseFloat(row[1].replace(',', '.'));
-      processed[currentCountry][country] = value;
-    }
-  });
-  
-  return processed;
+function normalizeUserInput(text) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[ .]/g, '')
+    .toLowerCase();
 }
 
-function formatearMonto(monto, pais) {
-  const format = CURRENCY_FORMATS[pais] || { code: 'USD', symbol: '$' };
-  return `${format.symbol} ${monto.toLocaleString('es-ES', { 
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6 
-  })}`;
-}
-
-// Manejo de comandos
-bot.onText(/^(\w+)[-\s](\w+)\s+([\d.,]+)$/i, async (msg, match) => {
-  await actualizarTasas();
-  
-  const chatId = msg.chat.id;
-  const [_, origenRaw, destinoRaw, montoRaw] = match;
-  const origen = origenRaw.toUpperCase();
-  const destino = destinoRaw.toUpperCase();
-  const monto = parseFloat(montoRaw.replace(',', '.'));
-
-  try {
-    if (!tasasCache[origen]) {
-      return bot.sendMessage(chatId, `❌ No existen tasas para ${origen}`);
-    }
-
-    const tasa = tasasCache[origen][destino];
-    if (!tasa) {
-      return bot.sendMessage(chatId, `❌ Tasa no encontrada para ${origen} → ${destino}`);
-    }
-
-    const resultado = monto * tasa;
-    const respuesta = `
-💱 *Conversión de Divisas*
-      
-🗺️ Origen: ${origen} (${CURRENCY_FORMATS[origen]?.code || '?'})
-🎯 Destino: ${destino} (${CURRENCY_FORMATS[destino]?.code || '?'})
-      
-💰 *Monto:* ${formatearMonto(monto, origen)}
-📊 *Tasa:* 1 ${CURRENCY_FORMATS[origen]?.code || origen} = ${tasa.toFixed(6)}
-      
-💡 *Resultado:* ${formatearMonto(resultado, destino)}
-    `;
-
-    bot.sendMessage(chatId, respuesta, { parse_mode: 'Markdown' });
-    
-  } catch (error) {
-    console.error('Error en conversión:', error);
-    bot.sendMessage(chatId, '❌ Error procesando la solicitud');
-  }
-});
-
-// Comandos adicionales
-bot.onText(/\/start/, (msg) => {
-  const helpText = `
-🤖 *Bot de Conversión de Divisas*
-    
-Ejemplos de uso:
-\`chile venezuela 20000\`
-\`argentina-colombia 5000\`
-\`peru-mexico 1500\`
-
-Países soportados:
-${Object.keys(CURRENCY_FORMATS).join(', ')}
-  `;
-  
-  bot.sendMessage(msg.chat.id, helpText, { parse_mode: 'Markdown' });
-});
-
-// Manejador de la API
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    try {
-      await bot.handleUpdate(req.body);
-      res.status(200).end();
-    } catch (error) {
-      console.error('Error en webhook:', error);
-      res.status(500).end();
+    const { body } = req;
+    
+    if (body.message) {
+      const chatId = body.message.chat.id;
+      const text = body.message.text.toLowerCase();
+
+      try {
+        if (text === 'paralelo') {
+          // Código existente para paralelo...
+        } else if (text === 'oficial') {
+          // Código existente para oficial...
+        } else {
+          const args = text.split(' ');
+          if (args.length >= 2) {
+            const countriesPart = args[0];
+            const montoStr = args[1];
+            const countries = countriesPart.split('-');
+            
+            if (countries.length === 2) {
+              const origen = normalizeUserInput(countries[0]);
+              const destino = normalizeUserInput(countries[1]);
+              const cleanedMontoStr = montoStr.replace(/\./g, '').replace(',', '.');
+              const monto = parseFloat(cleanedMontoStr);
+              
+              if (!isNaN(monto)) {
+                try {
+                  const response = await fetch('https://speed-bot-tasas.vercel.app/api/sheets');
+                  const data = await response.json();
+                  const rates = processDataIntoRates(data);
+                  
+                  if (rates[origen] && rates[origen][destino]) {
+                    const rate = rates[origen][destino];
+                    const resultado = monto * rate;
+                    const mensaje = 
+                      `💱 Conversión: ${countries[0].toUpperCase()} → ${countries[1].toUpperCase()}\n` +
+                      `📊 Monto: ${monto.toLocaleString()}\n` +
+                      `📈 Tasa: ${rate.toFixed(5)}\n` +
+                      `💵 Total: ${resultado.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                    await bot.sendMessage(chatId, mensaje);
+                  } else {
+                    await bot.sendMessage(chatId, '⚠️ No se encontró la tasa para la ruta especificada.');
+                  }
+                } catch (error) {
+                  console.error(error);
+                  await bot.sendMessage(chatId, '❌ Error al obtener las tasas.');
+                }
+              } else {
+                await bot.sendMessage(chatId, '⚠️ Monto inválido. Ingresa un número válido.');
+              }
+            } else {
+              await bot.sendMessage(chatId, '⚠️ Formato incorrecto. Usa: origen-destino monto\nEjemplo: chile-venezuela 2500');
+            }
+          } else {
+            await bot.sendMessage(chatId, '⚠️ Comando no reconocido. Usa "paralelo", "oficial", o "origen-destino monto".');
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        await bot.sendMessage(chatId, '❌ Error al procesar tu solicitud.');
+      }
     }
+    
+    res.status(200).end();
   } else {
-    res.status(405).end();
+    res.status(404).end();
   }
 }
