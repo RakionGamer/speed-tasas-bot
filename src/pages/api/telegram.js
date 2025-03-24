@@ -31,7 +31,7 @@ function processDataIntoRates(data) {
 }
 
 const welcomeMessage = `
-🎉 *Bienvenido al Bot de Tasas de Cambio de Spped* 💱
+🎉 *Bienvenido al Bot de Tasas de Cambio de Speed* 💱
 
 _Puedes usar estos comandos:_
 
