@@ -81,17 +81,19 @@ const welcomeMessage = `
 _Puedes usar estos comandos:_
 
 💵 *Tasas locales:*
-  - \`/paralelo [monto]\` → Dólar paralelo
-  - \`/oficial [monto]\`  → Dólar oficial
+  - \`paralelo [monto]\` → Dólar paralelo
+  - \`oficial [monto]\`  → Dólar oficial
 
 🌎 *Conversiones internacionales:*
   - \`origen-destino monto\`  
-    Ejemplo: \`chile-venezuela 2500\`
+    Ejemplo: \`chile-venezuela 2.500\`
 
 📊 *Ejemplos:*
-  - \`/paralelo 1000\`
+  - \`/paralelo 20\` (monto en dolarés) 
+  - \`/oficial 15.50\` (monto en dolarés) 
   - \`mexico-argentina 3000\`
   - \`oficial\` (solo tasa)
+  - \`paralelo\` (solo tasa)
 `;
 
 export default async function handler(req, res) {
