@@ -115,7 +115,7 @@ export default async function handler(req, res) {
         const comandoLocal = text.match(/^(\/?(paralelo|oficial))\s*(\d+[\.,]?\d*)?$/i);
         if (comandoLocal) {
           const [_, comando, tipo, monto] = comandoLocal;
-          const amount = parseFloat((monto || '').replace(',', '.'));
+          const amount = parseFloat((monto || '').replace(',', '.')) | 1;
           
           const response = await fetch('https://ve.dolarapi.com/v1/dolares');
           const datos = await response.json();
