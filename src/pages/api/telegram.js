@@ -138,7 +138,7 @@ export default async function handler(req, res) {
         }
 
         // Manejar conversiones internacionales
-        const conversionMatch = text.match(/([a-záéíóúñ]+)-([a-záéíóúñ]+)\s+([\d\.,]+)/i);
+        const conversionMatch = text.match(/([a-záéíóúñ]+)\s*-\s*([a-záéíóúñ]+)\s+([\d\.,]+)/i);
         if (conversionMatch) {
           const origen = normalizeText(conversionMatch[1]);
           const destino = normalizeText(conversionMatch[2]);
